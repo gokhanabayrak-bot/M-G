@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Couple App</title>
+<title>Couple App Final</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -17,10 +17,8 @@ background:#0b0f1a;
 color:white;
 }
 
-/* INPUT ZOOM FIX (CRITICAL) */
-input{
-font-size:16px;
-}
+/* INPUT ZOOM FIX */
+input{ font-size:16px; }
 
 /* SELECT */
 #select{
@@ -32,7 +30,7 @@ justify-content:center;
 align-items:center;
 gap:20px;
 background:#0b0f1a;
-z-index:999;
+z-index:9999;
 }
 
 .cardRow{display:flex;gap:20px;}
@@ -48,18 +46,19 @@ text-align:center;
 /* APP */
 #app{display:none;height:100vh;}
 
-/* MENU */
+/* MENU BUTTON */
 #menuBtn{
 position:fixed;
 top:10px;
 left:10px;
-z-index:3000;
+z-index:5000;
 padding:8px 12px;
 background:rgba(255,255,255,0.12);
 border-radius:10px;
 cursor:pointer;
 }
 
+/* SIDE MENU */
 #sideMenu{
 position:fixed;
 top:0;
@@ -67,9 +66,9 @@ left:-300px;
 width:280px;
 height:100%;
 background:#111827;
-z-index:2500;
+z-index:4500;
 padding:15px;
-transition:0.3s;
+transition:0.25s;
 overflow:auto;
 }
 
@@ -89,10 +88,10 @@ overflow:auto;
 display:flex;
 flex-direction:column;
 gap:10px;
-padding:40px 4px 140px 4px;
+padding:40px 4px 120px 4px;
 }
 
-/* GREEN CHAT */
+/* BUBBLE */
 .msgRow{display:flex;flex-direction:column;max-width:80%;}
 .left{align-self:flex-start;}
 .right{align-self:flex-end;}
@@ -109,7 +108,7 @@ word-wrap:break-word;
 
 .meBubble{background:rgba(34,197,94,0.45);}
 
-/* INPUT BAR (SAFE MOBILE FIX) */
+/* INPUT BAR */
 #inputBar{
 position:fixed;
 bottom:0;
@@ -121,35 +120,16 @@ padding:10px;
 padding-bottom:calc(10px + env(safe-area-inset-bottom));
 background:rgba(0,0,0,0.6);
 backdrop-filter:blur(10px);
-z-index:3000;
+z-index:5000;
 }
 
-input{
-flex:1;
-padding:14px;
-border-radius:12px;
-border:none;
-background:rgba(255,255,255,0.12);
-color:white;
-outline:none;
-}
-
-button{
-padding:12px 16px;
-border:none;
-border-radius:12px;
-background:#22c55e;
-color:white;
-cursor:pointer;
-}
-
-/* TYPING FIX */
+/* TYPING */
 #typing{
 position:fixed;
-bottom:80px;
+bottom:85px;
 left:10px;
 right:10px;
-z-index:2000;
+z-index:4000;
 }
 
 .hidden{display:none;}
@@ -157,12 +137,10 @@ z-index:2000;
 .typingBox{
 display:flex;
 gap:8px;
-align-items:center;
 padding:10px;
-background:rgba(255,255,255,0.10);
+background:rgba(255,255,255,0.1);
 border-radius:18px;
 width:fit-content;
-font-size:13px;
 }
 
 /* STATUS */
@@ -170,19 +148,18 @@ font-size:13px;
 position:fixed;
 top:10px;
 right:10px;
-z-index:3000;
+z-index:5000;
 padding:6px 10px;
-border-radius:999px;
 background:rgba(255,255,255,0.12);
+border-radius:999px;
 font-size:12px;
 }
 
 /* GAME */
-#gameBox{
-margin-top:20px;
-padding:10px;
-background:rgba(255,255,255,0.08);
-border-radius:10px;
+#gameTitle{
+margin-top:10px;
+font-size:14px;
+opacity:0.8;
 }
 
 #hangWord{
@@ -191,10 +168,13 @@ letter-spacing:6px;
 margin:10px 0;
 }
 
-#turnInfo{
-font-size:13px;
-opacity:0.8;
+#memoryList div{
+background:rgba(255,255,255,0.08);
+padding:8px;
+border-radius:10px;
+margin-top:8px;
 }
+
 </style>
 </head>
 
@@ -203,13 +183,19 @@ opacity:0.8;
 <div id="menuBtn">☰ Menü</div>
 
 <div id="sideMenu">
-<h3>📌 Menü</h3>
 
-<div id="gameBox">
-<h4>🪢 Adam Asmaca</h4>
+<h3>📌 Anı Kutusu</h3>
+
+<input id="memoryInput" placeholder="Anı yaz">
+<button id="addMemory">Ekle</button>
+
+<div id="memoryList"></div>
+
+<hr>
+
+<h3>🎮 Adam Asmaca</h3>
 
 <div id="turnInfo">Sıra: ...</div>
-
 <div id="hangWord">_ _ _ _</div>
 <div id="hangLives">❤️❤️❤️❤️❤️</div>
 
@@ -217,7 +203,6 @@ opacity:0.8;
 <button onclick="guess()">Tahmin</button>
 
 <p id="gameInfo"></p>
-</div>
 
 </div>
 
@@ -245,7 +230,7 @@ opacity:0.8;
 </div>
 
 <div id="inputBar">
-<input id="text" placeholder="Mesaj yaz...">
+<input id="text" placeholder="Mesaj yaz">
 <button id="sendBtn">➤</button>
 </div>
 
@@ -276,6 +261,23 @@ let user="";
 
 const chatRef = ref(db,"rooms/"+room+"/chat");
 const gameRef = ref(db,"rooms/"+room+"/game");
+const memRef = ref(db,"rooms/"+room+"/memories");
+const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
+
+/* MENU FIX (STABLE) */
+const menuBtn=document.getElementById("menuBtn");
+const sideMenu=document.getElementById("sideMenu");
+
+menuBtn.onclick=(e)=>{
+e.stopPropagation();
+sideMenu.classList.toggle("open");
+};
+
+document.addEventListener("click",(e)=>{
+if(!sideMenu.contains(e.target) && !menuBtn.contains(e.target)){
+sideMenu.classList.remove("open");
+}
+});
 
 /* SELECT */
 window.selectUser=function(u){
@@ -285,10 +287,10 @@ document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
 
 /* ONLINE */
-set(ref(db,"rooms/"+room+"/presence/"+user),{online:true});
-onDisconnect(ref(db,"rooms/"+room+"/presence/"+user)).set({online:false});
+set(presenceRef(user),{online:true});
+onDisconnect(presenceRef(user)).set({online:false});
 
-/* INIT GAME */
+/* INIT GAME ONLY ONCE */
 set(gameRef,{
 word:"istanbul",
 lives:5,
@@ -296,8 +298,16 @@ turn:"Melek",
 display:Array(9).fill("_")
 });
 
+listenAll();
+}
+
+/* LISTEN ALL */
+function listenAll(){
 listenChat();
+listenTyping();
 listenGame();
+listenMemory();
+listenPresence();
 }
 
 /* CHAT */
@@ -344,6 +354,7 @@ set(ref(db,"rooms/"+room+"/typing/"+user),{t:false});
 },800);
 });
 
+function listenTyping(){
 onValue(ref(db,"rooms/"+room+"/typing"),(snap)=>{
 let d=snap.val()||{};
 let other=Object.keys(d).find(k=>k!==user && d[k].t);
@@ -359,6 +370,47 @@ return;
 box.classList.remove("hidden");
 text.innerText=other+" yazıyor...";
 });
+}
+
+/* PRESENCE */
+function listenPresence(){
+onValue(ref(db,"rooms/"+room+"/presence"),(snap)=>{
+let d=snap.val()||{};
+let online=Object.keys(d).filter(k=>d[k].online);
+
+document.getElementById("statusBox").innerText=
+"Online: "+online.join(", ");
+});
+}
+
+/* MEMORY */
+document.getElementById("addMemory").onclick=()=>{
+let t=document.getElementById("memoryInput").value.trim();
+if(!t)return;
+
+push(memRef,{
+user,
+text:t,
+time:new Date().toLocaleString("tr-TR")
+});
+
+document.getElementById("memoryInput").value="";
+};
+
+function listenMemory(){
+onValue(memRef,(snap)=>{
+let data=snap.val();
+let box=document.getElementById("memoryList");
+box.innerHTML="";
+if(!data) return;
+
+Object.values(data).forEach(m=>{
+let div=document.createElement("div");
+div.innerHTML=`<b>${m.user}</b> • ${m.time}<br>${m.text}`;
+box.appendChild(div);
+});
+});
+}
 
 /* GAME */
 function listenGame(){
