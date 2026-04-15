@@ -10,9 +10,7 @@
 html,body{
 margin:0;
 height:100%;
-width:100%;
 overflow:hidden;
-position:fixed;
 font-family:-apple-system,BlinkMacSystemFont;
 background:#0b0f1a;
 color:white;
@@ -31,7 +29,6 @@ z-index:999;
 }
 
 .cardRow{display:flex;gap:20px;}
-
 .card{
 width:140px;
 padding:20px;
@@ -41,7 +38,7 @@ cursor:pointer;
 text-align:center;
 }
 
-#app{display:none;height:100vh;position:relative;}
+#app{display:none;height:100vh;}
 
 #chat{
 height:100%;
@@ -59,20 +56,11 @@ gap:10px;
 padding:10px 4px 90px 4px;
 }
 
-.msgRow{
-display:flex;
-flex-direction:column;
-max-width:80%;
-}
-
+.msgRow{display:flex;flex-direction:column;max-width:80%;}
 .left{align-self:flex-start;}
 .right{align-self:flex-end;}
 
-.name{
-font-size:11px;
-opacity:0.6;
-margin:0 6px 2px 6px;
-}
+.name{font-size:11px;opacity:0.6;margin:0 6px 2px 6px;}
 
 .bubble{
 padding:12px 14px;
@@ -99,25 +87,28 @@ padding:6px 10px;
 
 .hidden{display:none;}
 
-.typingBubble{
+.typingBox{
 display:flex;
 align-items:center;
 gap:8px;
-font-size:13px;
-opacity:0.85;
 padding:10px 12px;
 border-radius:18px;
 background:rgba(255,255,255,0.10);
 width:fit-content;
+font-size:13px;
+opacity:0.9;
 }
 
-.dots{display:flex;gap:4px;}
 .dots span{
+display:inline-block;
 width:6px;height:6px;
-background:white;border-radius:50%;
+background:white;
+border-radius:50%;
 opacity:0.3;
 animation:bounce 1.2s infinite;
+margin-right:3px;
 }
+
 .dots span:nth-child(2){animation-delay:0.2s;}
 .dots span:nth-child(3){animation-delay:0.4s;}
 
@@ -150,13 +141,12 @@ background:rgba(255,255,255,0.12);
 color:white;
 }
 
-#sendBtn{
+button{
 padding:12px 16px;
 border:none;
 border-radius:12px;
 background:#3b82f6;
 color:white;
-font-size:16px;
 cursor:pointer;
 }
 
@@ -168,16 +158,10 @@ transform:translateX(-50%);
 padding:8px 14px;
 border-radius:999px;
 background:rgba(255,255,255,0.12);
-backdrop-filter:blur(10px);
 font-size:12px;
-opacity:0.9;
-border:1px solid rgba(255,255,255,0.15);
 }
-
 .onlineDot{
-width:8px;
-height:8px;
-border-radius:50%;
+width:8px;height:8px;border-radius:50%;
 background:#22c55e;
 display:inline-block;
 margin-right:6px;
@@ -197,15 +181,17 @@ margin-right:6px;
 
 <div id="app">
 
-<div id="statusBox">durum...</div>
+<div id="statusBox">...</div>
 
 <div id="chat">
 <div id="messages"></div>
 
 <div id="typing" class="hidden">
-  <div class="typingBubble">
+  <div class="typingBox">
     <span id="typingText"></span>
-    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="dots">
+      <span></span><span></span><span></span>
+    </div>
   </div>
 </div>
 
@@ -242,8 +228,6 @@ let room="test";
 let user="";
 
 const msgRef = ref(db,"rooms/"+room+"/chat");
-
-/* ✅ FIXED typing system (user based) */
 const typingRef = (u)=>ref(db,"rooms/"+room+"/typing/"+u);
 const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
 
@@ -268,10 +252,13 @@ lastSeen:Date.now()
 let other = user==="Melek" ? "Gökhan" : "Melek";
 
 listenPresence(other);
-listenTyping(other); // ✅ FIX HERE
+listenTyping(other);
+listenMessages();
 }
 
 /* CHAT */
+function listenMessages(){
+
 onValue(msgRef,(snap)=>{
 let data=snap.val();
 let box=document.getElementById("messages");
@@ -283,21 +270,17 @@ Object.entries(data).forEach(([k,m])=>{
 let row=document.createElement("div");
 row.className="msgRow "+(m.u===user?"right":"left");
 
-let name=document.createElement("div");
-name.className="name";
-name.innerText=m.u;
+row.innerHTML=`
+<div class="name">${m.u}</div>
+<div class="bubble ${m.u===user?"meBubble":"otherBubble"}">${m.m}</div>
+`;
 
-let bubble=document.createElement("div");
-bubble.className="bubble "+(m.u===user?"meBubble":"otherBubble");
-bubble.innerText=m.m;
-
-row.appendChild(name);
-row.appendChild(bubble);
 box.appendChild(row);
 });
 
-setTimeout(()=>box.scrollTop=box.scrollHeight,50);
+box.scrollTop=box.scrollHeight;
 });
+}
 
 /* SEND */
 function send(){
@@ -314,7 +297,7 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") send();
 });
 
-/* ✅ FIXED TYPING */
+/* 🔥 TYPING FIX */
 document.getElementById("text").addEventListener("input",()=>{
 
 if(!user) return;
@@ -332,17 +315,14 @@ t:false,
 ts:Date.now()
 });
 },800);
-
 });
 
 /* typing listener */
 function listenTyping(other){
 
-const otherTypingRef = typingRef(other);
+onValue(typingRef(other),(snap)=>{
 
-onValue(otherTypingRef,(s)=>{
-
-let d=s.val();
+let d=snap.val();
 let box=document.getElementById("typing");
 let text=document.getElementById("typingText");
 
@@ -356,22 +336,22 @@ text.innerText = other + " yazıyor...";
 });
 }
 
-/* PRESENCE */
+/* presence */
 function listenPresence(other){
 
-onValue(presenceRef(other),(s)=>{
-let d=s.val();
+onValue(presenceRef(other),(snap)=>{
+let d=snap.val();
 let box=document.getElementById("statusBox");
 
 if(!d){
-box.innerHTML="⚪ "+other+" bilinmiyor";
+box.innerText="Bilinmiyor";
 return;
 }
 
 if(d.online){
 box.innerHTML='<span class="onlineDot"></span>'+other+" çevrimiçi";
 }else{
-box.innerHTML="⏱ "+other+" offline";
+box.innerText=other+" offline";
 }
 });
 }
