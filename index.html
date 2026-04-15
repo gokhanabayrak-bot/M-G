@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Couple App</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 html,body{
@@ -40,29 +40,28 @@ text-align:center;
 }
 
 /* APP */
-#app{display:none;height:100vh;position:relative;}
+#app{display:none;height:100vh;}
 
-/* TOP MENU BUTTON */
+/* MENU */
 #menuBtn{
 position:fixed;
 top:10px;
 left:10px;
-z-index:1000;
+z-index:3000;
 padding:8px 12px;
 background:rgba(255,255,255,0.12);
 border-radius:10px;
 cursor:pointer;
 }
 
-/* SIDE MENU */
 #sideMenu{
 position:fixed;
 top:0;
-left:-280px;
-width:260px;
+left:-300px;
+width:280px;
 height:100%;
 background:#111827;
-z-index:2000;
+z-index:2500;
 padding:15px;
 transition:0.3s;
 overflow:auto;
@@ -72,22 +71,20 @@ overflow:auto;
 
 .menuTitle{font-size:18px;margin-bottom:10px;}
 
-/* MEMORY */
 #memoryInput{
 width:100%;
 padding:10px;
 border-radius:10px;
 border:none;
-outline:none;
 margin-bottom:10px;
 }
 
 #addMemory{
 width:100%;
 padding:10px;
+background:#3b82f6;
 border:none;
 border-radius:10px;
-background:#3b82f6;
 color:white;
 cursor:pointer;
 }
@@ -97,7 +94,12 @@ background:rgba(255,255,255,0.08);
 padding:10px;
 border-radius:10px;
 margin-top:10px;
-font-size:13px;
+}
+
+.memoryHeader{
+font-size:12px;
+opacity:0.7;
+margin-bottom:5px;
 }
 
 /* CHAT */
@@ -126,19 +128,11 @@ padding:40px 4px 90px 4px;
 .bubble{
 padding:12px 14px;
 border-radius:18px;
-font-size:15px;
-line-height:1.3;
-word-wrap:break-word;
+background:rgba(255,255,255,0.10);
 }
 
 .meBubble{
 background:linear-gradient(135deg,#3b82f6,#60a5fa);
-border-bottom-right-radius:6px;
-}
-
-.otherBubble{
-background:rgba(255,255,255,0.10);
-border-bottom-left-radius:6px;
 }
 
 /* typing */
@@ -147,11 +141,11 @@ border-bottom-left-radius:6px;
 
 .typingBox{
 display:flex;
-align-items:center;
 gap:8px;
-padding:10px 12px;
-border-radius:18px;
+align-items:center;
+padding:10px;
 background:rgba(255,255,255,0.10);
+border-radius:18px;
 width:fit-content;
 font-size:13px;
 }
@@ -164,19 +158,13 @@ left:10px;
 right:10px;
 display:flex;
 gap:10px;
-padding:10px;
-border-radius:16px;
-background:rgba(255,255,255,0.08);
-backdrop-filter:blur(10px);
 }
 
 input{
 flex:1;
 padding:14px;
-font-size:16px;
-border:none;
 border-radius:12px;
-outline:none;
+border:none;
 background:rgba(255,255,255,0.12);
 color:white;
 }
@@ -197,10 +185,9 @@ top:10px;
 left:50%;
 transform:translateX(-50%);
 padding:8px 14px;
-border-radius:999px;
 background:rgba(255,255,255,0.12);
+border-radius:999px;
 font-size:12px;
-z-index:999;
 }
 .onlineDot{
 width:8px;height:8px;border-radius:50%;
@@ -213,10 +200,9 @@ margin-right:6px;
 
 <body>
 
-<!-- MENU BUTTON -->
+<!-- MENU -->
 <div id="menuBtn">☰ Menü</div>
 
-<!-- SIDE MENU -->
 <div id="sideMenu">
 <div class="menuTitle">📌 Anı Kutusu</div>
 
@@ -286,10 +272,17 @@ const memRef = ref(db,"rooms/"+room+"/memories");
 const typingRef = (u)=>ref(db,"rooms/"+room+"/typing/"+u);
 const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
 
-/* MENU */
-document.getElementById("menuBtn").onclick=()=>{
-document.getElementById("sideMenu").classList.toggle("open");
-};
+/* MENU TOGGLE FIX */
+const menuBtn=document.getElementById("menuBtn");
+const sideMenu=document.getElementById("sideMenu");
+
+menuBtn.onclick=()=>sideMenu.classList.toggle("open");
+
+document.addEventListener("click",(e)=>{
+if(!sideMenu.contains(e.target) && e.target!==menuBtn){
+sideMenu.classList.remove("open");
+}
+});
 
 /* SELECT */
 window.selectUser=function(u){
@@ -299,20 +292,20 @@ user=u;
 document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
 
-set(presenceRef(user),{online:true,lastSeen:Date.now()});
+set(presenceRef(user),{online:true});
 
-onDisconnect(presenceRef(user)).set({online:false,lastSeen:Date.now()});
+onDisconnect(presenceRef(user)).set({online:false});
 
-let other = user==="Melek" ? "Gökhan" : "Melek";
+let other=user==="Melek"?"Gökhan":"Melek";
 
-listenMessages();
+listenChat();
 listenTyping(other);
 listenPresence(other);
 listenMemories();
 }
 
 /* CHAT */
-function listenMessages(){
+function listenChat(){
 onValue(msgRef,(snap)=>{
 let data=snap.val();
 let box=document.getElementById("messages");
@@ -325,7 +318,7 @@ row.className="msgRow "+(m.u===user?"right":"left");
 
 row.innerHTML=`
 <div class="name">${m.u}</div>
-<div class="bubble ${m.u===user?"meBubble":"otherBubble"}">${m.m}</div>
+<div class="bubble ${m.u===user?"meBubble":""}">${m.m}</div>
 `;
 
 box.appendChild(row);
@@ -351,8 +344,8 @@ if(!user) return;
 
 set(typingRef(user),{t:true});
 
-clearTimeout(window.t);
-window.t=setTimeout(()=>{
+clearTimeout(window.typingTimer);
+window.typingTimer=setTimeout(()=>{
 set(typingRef(user),{t:false});
 },800);
 });
@@ -387,14 +380,14 @@ box.innerText=other+" offline";
 });
 }
 
-/* ===== ANI KUTUSU ===== */
+/* MEMORY SYSTEM */
 document.getElementById("addMemory").onclick=()=>{
 let text=document.getElementById("memoryInput").value.trim();
 if(!text||!user)return;
 
 push(memRef,{
-u:user,
-m:text,
+user,
+text,
 time:new Date().toLocaleString("tr-TR")
 });
 
@@ -412,11 +405,12 @@ if(!data) return;
 Object.values(data).forEach(m=>{
 let div=document.createElement("div");
 div.className="memoryItem";
+
 div.innerHTML=`
-<b>${m.u}</b><br>
-${m.m}<br>
-<small>${m.time}</small>
+<div class="memoryHeader">${m.user} • ${m.time}</div>
+<div>${m.text}</div>
 `;
+
 box.appendChild(div);
 });
 });
