@@ -3,16 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>Couple iOS V8.5</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ✅ FIX: iOS zoom + layout bug -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <style>
-body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont;
-background:#0b0f1a;
-color:white;
-height:100vh;
-overflow:hidden;
+
+html, body {
+height: 100%;
+width: 100%;
+margin: 0;
+overflow: hidden;
+position: fixed; /* ✅ keyboard scroll bug fix */
+font-family: -apple-system, BlinkMacSystemFont;
+background: #0b0f1a;
+color: white;
 }
 
 /* USER SELECT */
@@ -45,7 +50,11 @@ transition:0.2s;
 .card:hover{transform:scale(1.05);}
 
 /* APP */
-#app{display:none;height:100vh;position:relative;}
+#app{
+display:none;
+height:100vh;
+position:relative;
+}
 
 #chat{
 height:100%;
@@ -60,7 +69,7 @@ overflow:auto;
 display:flex;
 flex-direction:column;
 gap:10px;
-padding-bottom:60px;
+padding-bottom:70px;
 }
 
 .msg{
@@ -163,14 +172,17 @@ color:white;
 
 <body>
 
+<!-- USER SELECT -->
 <div id="select">
 <div class="title">💜 Couple App</div>
+
 <div class="cardRow">
 <div class="card" onclick="selectUser('Melek')">👼 Melek</div>
 <div class="card" onclick="selectUser('Gökhan')">😎 Gökhan</div>
 </div>
 </div>
 
+<!-- APP -->
 <div id="app">
 
 <div id="chat">
@@ -258,6 +270,11 @@ document.getElementById("sendBtn").onclick=sendMessage;
 
 document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") sendMessage();
+});
+
+/* FIX: iOS zoom scroll bug */
+document.getElementById("text").addEventListener("focus",()=>{
+setTimeout(()=>window.scrollTo(0,0),100);
 });
 
 /* TYPING */
