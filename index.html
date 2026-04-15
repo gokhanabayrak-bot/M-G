@@ -7,7 +7,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <style>
-
 html,body{
 margin:0;
 height:100%;
@@ -19,7 +18,6 @@ background:#0b0f1a;
 color:white;
 }
 
-/* SELECT */
 #select{
 position:fixed;
 inset:0;
@@ -43,7 +41,6 @@ cursor:pointer;
 text-align:center;
 }
 
-/* APP */
 #app{display:none;height:100vh;position:relative;}
 
 #chat{
@@ -62,7 +59,6 @@ gap:10px;
 padding:10px 4px 90px 4px;
 }
 
-/* MESSAGE */
 .msgRow{
 display:flex;
 flex-direction:column;
@@ -96,7 +92,7 @@ background:rgba(255,255,255,0.10);
 border-bottom-left-radius:6px;
 }
 
-/* TYPING */
+/* typing */
 #typing{
 padding:6px 10px;
 }
@@ -115,21 +111,13 @@ background:rgba(255,255,255,0.10);
 width:fit-content;
 }
 
-/* Dots */
-.dots{
-display:flex;
-gap:4px;
-}
-
+.dots{display:flex;gap:4px;}
 .dots span{
-width:6px;
-height:6px;
-background:white;
-border-radius:50%;
+width:6px;height:6px;
+background:white;border-radius:50%;
 opacity:0.3;
 animation:bounce 1.2s infinite;
 }
-
 .dots span:nth-child(2){animation-delay:0.2s;}
 .dots span:nth-child(3){animation-delay:0.4s;}
 
@@ -138,7 +126,6 @@ animation:bounce 1.2s infinite;
 40%{transform:translateY(-5px);opacity:1;}
 }
 
-/* INPUT */
 #inputBar{
 position:fixed;
 bottom:10px;
@@ -173,7 +160,6 @@ font-size:16px;
 cursor:pointer;
 }
 
-/* 🔥 ONLINE BOX (NEW) */
 #statusBox{
 position:fixed;
 top:10px;
@@ -196,7 +182,6 @@ background:#22c55e;
 display:inline-block;
 margin-right:6px;
 }
-
 </style>
 </head>
 
@@ -219,10 +204,8 @@ margin-right:6px;
 
 <div id="typing" class="hidden">
   <div class="typingBubble">
-    <span id="typingText">Yazıyor</span>
-    <div class="dots">
-      <span></span><span></span><span></span>
-    </div>
+    <span id="typingText"></span>
+    <div class="dots"><span></span><span></span><span></span></div>
   </div>
 </div>
 
@@ -259,17 +242,19 @@ let room="test";
 let user="";
 
 const msgRef = ref(db,"rooms/"+room+"/chat");
-const typingRef = ref(db,"rooms/"+room+"/typing");
+
+/* ✅ FIXED typing system (user based) */
+const typingRef = (u)=>ref(db,"rooms/"+room+"/typing/"+u);
 const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
 
 /* SELECT */
 window.selectUser=function(u){
+
 user=u;
 
 document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
 
-/* presence */
 set(presenceRef(user),{
 online:true,
 lastSeen:Date.now()
@@ -281,7 +266,9 @@ lastSeen:Date.now()
 });
 
 let other = user==="Melek" ? "Gökhan" : "Melek";
+
 listenPresence(other);
+listenTyping(other); // ✅ FIX HERE
 }
 
 /* CHAT */
@@ -291,7 +278,7 @@ let box=document.getElementById("messages");
 box.innerHTML="";
 if(!data) return;
 
-Object.values(data).forEach(m=>{
+Object.entries(data).forEach(([k,m])=>{
 
 let row=document.createElement("div");
 row.className="msgRow "+(m.u===user?"right":"left");
@@ -306,14 +293,10 @@ bubble.innerText=m.m;
 
 row.appendChild(name);
 row.appendChild(bubble);
-
 box.appendChild(row);
 });
 
-setTimeout(()=>{
-box.scrollTop=box.scrollHeight;
-},50);
-
+setTimeout(()=>box.scrollTop=box.scrollHeight,50);
 });
 
 /* SEND */
@@ -331,61 +314,49 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") send();
 });
 
-/* TYPING FIX (SAĞLAM VERSION) */
+/* ✅ FIXED TYPING */
 document.getElementById("text").addEventListener("input",()=>{
 
 if(!user) return;
 
-set(typingRef,{
-u:user,
-t:true
+set(typingRef(user),{
+t:true,
+ts:Date.now()
 });
 
 clearTimeout(window.typingTimer);
 
 window.typingTimer=setTimeout(()=>{
-set(typingRef,{
-u:user,
-t:false
+set(typingRef(user),{
+t:false,
+ts:Date.now()
 });
 },800);
 
 });
 
-let typingStart=null;
-let typingInterval=null;
+/* typing listener */
+function listenTyping(other){
 
-onValue(typingRef,(s)=>{
+const otherTypingRef = typingRef(other);
+
+onValue(otherTypingRef,(s)=>{
+
 let d=s.val();
 let box=document.getElementById("typing");
 let text=document.getElementById("typingText");
 
-if(!d || d.u===user || !d.t){
+if(!d || !d.t){
 box.classList.add("hidden");
-typingStart=null;
-clearInterval(typingInterval);
 return;
 }
 
 box.classList.remove("hidden");
-text.innerText=d.u+" yazıyor";
-
-if(!typingStart){
-typingStart=Date.now();
-}
-
-clearInterval(typingInterval);
-typingInterval=setInterval(()=>{
-let diff=Date.now()-typingStart;
-
-if(diff>3000){
-text.innerText=d.u+" hâlâ yazıyor... :)";
-}
-},500);
-
+text.innerText = other + " yazıyor...";
 });
+}
 
-/* PRESENCE UI */
+/* PRESENCE */
 function listenPresence(other){
 
 onValue(presenceRef(other),(s)=>{
@@ -403,7 +374,6 @@ box.innerHTML='<span class="onlineDot"></span>'+other+" çevrimiçi";
 box.innerHTML="⏱ "+other+" offline";
 }
 });
-
 }
 
 </script>
