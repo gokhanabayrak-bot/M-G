@@ -271,8 +271,8 @@ online:false,
 lastSeen:Date.now()
 });
 
-/* listen other user */
-let other = user==="Melek" ? "Gökhan" : "Melek";
+let users=["Melek","Gökhan"];
+let other = users.find(x=>x!==user);
 listenPresence(other);
 }
 
@@ -323,7 +323,28 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") sendMessage();
 });
 
-/* TYPING */
+/* TYPING (FIXED) */
+document.getElementById("text").addEventListener("input",()=>{
+
+if(!user) return;
+
+set(typingRef,{
+u:user,
+t:true
+});
+
+clearTimeout(window.typingTimer);
+window.typingTimer=setTimeout(()=>{
+
+set(typingRef,{
+u:user,
+t:false
+});
+
+},800);
+
+});
+
 let typingStartTime=null;
 let typingInterval=null;
 
@@ -349,10 +370,13 @@ typingStartTime=Date.now();
 clearInterval(typingInterval);
 typingInterval=setInterval(()=>{
 let diff=Date.now()-typingStartTime;
+
 if(diff>3000){
 text.innerText=d.u+" hâlâ yazıyor... :)";
 }
+
 },500);
+
 });
 
 /* PRESENCE UI */
@@ -365,6 +389,7 @@ return Math.floor(diff/86400000)+" gün önce";
 }
 
 function listenPresence(other){
+
 onValue(presenceRef(other),(s)=>{
 let d=s.val();
 let status=document.getElementById("status");
@@ -380,6 +405,7 @@ status.innerText=other+" 🟢 çevrimiçi";
 status.innerText=other+" ⏱ "+formatTime(d.lastSeen);
 }
 });
+
 }
 
 </script>
