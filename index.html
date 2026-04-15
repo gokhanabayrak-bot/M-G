@@ -53,13 +53,14 @@ flex-direction:column;
 padding:12px;
 }
 
+/* MESSAGES */
 #messages{
 flex:1;
 overflow:auto;
 display:flex;
 flex-direction:column;
 gap:10px;
-padding:10px 4px 90px 4px;
+padding:10px 4px 120px 4px; /* 🔥 input + typing için boşluk */
 }
 
 /* MESSAGE */
@@ -96,9 +97,13 @@ background:rgba(255,255,255,0.10);
 border-bottom-left-radius:6px;
 }
 
-/* TYPING */
-#typing{
-padding:6px 10px;
+/* 🔥 TYPING FIXED POSITION */
+#typingContainer{
+position:fixed;
+bottom:80px;   /* input üstü */
+left:10px;
+right:10px;
+z-index:50;
 }
 
 .hidden{display:none;}
@@ -108,14 +113,15 @@ display:flex;
 align-items:center;
 gap:8px;
 font-size:13px;
-opacity:0.85;
+opacity:0.9;
 padding:10px 12px;
 border-radius:18px;
 background:rgba(255,255,255,0.10);
 width:fit-content;
+backdrop-filter:blur(10px);
 }
 
-/* Dots */
+/* dots */
 .dots{
 display:flex;
 gap:4px;
@@ -150,6 +156,7 @@ padding:10px;
 border-radius:16px;
 background:rgba(255,255,255,0.08);
 backdrop-filter:blur(10px);
+z-index:60;
 }
 
 input{
@@ -173,7 +180,7 @@ font-size:16px;
 cursor:pointer;
 }
 
-/* 🔥 ONLINE BOX (NEW) */
+/* STATUS */
 #statusBox{
 position:fixed;
 top:10px;
@@ -182,10 +189,8 @@ transform:translateX(-50%);
 padding:8px 14px;
 border-radius:999px;
 background:rgba(255,255,255,0.12);
-backdrop-filter:blur(10px);
 font-size:12px;
-opacity:0.9;
-border:1px solid rgba(255,255,255,0.15);
+z-index:100;
 }
 
 .onlineDot{
@@ -216,16 +221,16 @@ margin-right:6px;
 
 <div id="chat">
 <div id="messages"></div>
+</div>
 
-<div id="typing" class="hidden">
+<!-- 🔥 typing artık input üstünde -->
+<div id="typingContainer" class="hidden">
   <div class="typingBubble">
     <span id="typingText">Yazıyor</span>
     <div class="dots">
       <span></span><span></span><span></span>
     </div>
   </div>
-</div>
-
 </div>
 
 <div id="inputBar">
@@ -259,29 +264,25 @@ let room="test";
 let user="";
 
 const msgRef = ref(db,"rooms/"+room+"/chat");
-const typingRef = ref(db,"rooms/"+room+"/typing");
 const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
+const typingRef = (u)=>ref(db,"rooms/"+room+"/typing/"+u);
 
 /* SELECT */
 window.selectUser=function(u){
+
 user=u;
 
 document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
 
 /* presence */
-set(presenceRef(user),{
-online:true,
-lastSeen:Date.now()
-});
+set(presenceRef(user),{online:true,lastSeen:Date.now()});
 
-onDisconnect(presenceRef(user)).set({
-online:false,
-lastSeen:Date.now()
-});
+onDisconnect(presenceRef(user)).set({online:false,lastSeen:Date.now()});
 
 let other = user==="Melek" ? "Gökhan" : "Melek";
 listenPresence(other);
+listenTyping(other);
 }
 
 /* CHAT */
@@ -331,61 +332,53 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") send();
 });
 
-/* TYPING FIX (SAĞLAM VERSION) */
+/* TYPING */
 document.getElementById("text").addEventListener("input",()=>{
 
 if(!user) return;
 
-set(typingRef,{
-u:user,
-t:true
-});
+set(typingRef(user),{typing:true,t:Date.now()});
 
 clearTimeout(window.typingTimer);
 
 window.typingTimer=setTimeout(()=>{
-set(typingRef,{
-u:user,
-t:false
-});
+set(typingRef(user),{typing:false,t:Date.now()});
 },800);
 
 });
 
-let typingStart=null;
-let typingInterval=null;
+/* LISTEN TYPING */
+function listenTyping(other){
 
-onValue(typingRef,(s)=>{
+onValue(typingRef(other),(s)=>{
 let d=s.val();
-let box=document.getElementById("typing");
+let box=document.getElementById("typingContainer");
 let text=document.getElementById("typingText");
 
-if(!d || d.u===user || !d.t){
+if(!d || !d.typing){
 box.classList.add("hidden");
-typingStart=null;
-clearInterval(typingInterval);
 return;
 }
 
 box.classList.remove("hidden");
-text.innerText=d.u+" yazıyor";
 
-if(!typingStart){
-typingStart=Date.now();
-}
+text.innerText = other + " yazıyor";
 
-clearInterval(typingInterval);
-typingInterval=setInterval(()=>{
-let diff=Date.now()-typingStart;
+let start = d.t || Date.now();
 
-if(diff>3000){
-text.innerText=d.u+" hâlâ yazıyor... :)";
+clearInterval(window.typingInterval);
+
+window.typingInterval = setInterval(()=>{
+let diff = Date.now() - start;
+if(diff > 3000){
+text.innerText = other + " hâlâ yazıyor... :)";
 }
 },500);
 
 });
+}
 
-/* PRESENCE UI */
+/* PRESENCE */
 function listenPresence(other){
 
 onValue(presenceRef(other),(s)=>{
@@ -397,11 +390,9 @@ box.innerHTML="⚪ "+other+" bilinmiyor";
 return;
 }
 
-if(d.online){
-box.innerHTML='<span class="onlineDot"></span>'+other+" çevrimiçi";
-}else{
-box.innerHTML="⏱ "+other+" offline";
-}
+box.innerHTML = d.online
+? '<span class="onlineDot"></span>'+other+" çevrimiçi"
+: "⏱ "+other+" offline";
 });
 
 }
