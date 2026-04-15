@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Couple App</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -71,6 +70,7 @@ overflow:auto;
 
 .menuTitle{font-size:18px;margin-bottom:10px;}
 
+/* MEMORY */
 #memoryInput{
 width:100%;
 padding:10px;
@@ -116,7 +116,7 @@ overflow:auto;
 display:flex;
 flex-direction:column;
 gap:10px;
-padding:40px 4px 90px 4px;
+padding:40px 4px 120px 4px;
 }
 
 .msgRow{display:flex;flex-direction:column;max-width:80%;}
@@ -125,30 +125,16 @@ padding:40px 4px 90px 4px;
 
 .name{font-size:11px;opacity:0.6;margin:0 6px 2px 6px;}
 
+/* GREEN CHAT */
 .bubble{
 padding:12px 14px;
 border-radius:18px;
-background:rgba(255,255,255,0.10);
+background:rgba(34,197,94,0.25);
+border:1px solid rgba(34,197,94,0.4);
+word-wrap:break-word;
 }
 
-.meBubble{
-background:linear-gradient(135deg,#3b82f6,#60a5fa);
-}
-
-/* typing */
-#typing{padding:6px 10px;}
-.hidden{display:none;}
-
-.typingBox{
-display:flex;
-gap:8px;
-align-items:center;
-padding:10px;
-background:rgba(255,255,255,0.10);
-border-radius:18px;
-width:fit-content;
-font-size:13px;
-}
+.meBubble{background:rgba(34,197,94,0.45);}
 
 /* INPUT */
 #inputBar{
@@ -158,6 +144,7 @@ left:10px;
 right:10px;
 display:flex;
 gap:10px;
+z-index:3000;
 }
 
 input{
@@ -173,46 +160,97 @@ button{
 padding:12px 16px;
 border:none;
 border-radius:12px;
-background:#3b82f6;
+background:#22c55e;
 color:white;
 cursor:pointer;
+}
+
+/* TYPING */
+#typing{
+position:fixed;
+bottom:95px;
+left:10px;
+right:10px;
+z-index:2000;
+}
+
+.hidden{display:none;}
+
+.typingBox{
+display:flex;
+gap:8px;
+align-items:center;
+padding:10px;
+background:rgba(255,255,255,0.10);
+border-radius:18px;
+width:fit-content;
+font-size:13px;
 }
 
 /* STATUS */
 #statusBox{
 position:fixed;
 top:10px;
-left:50%;
-transform:translateX(-50%);
-padding:8px 14px;
-background:rgba(255,255,255,0.12);
+right:10px;
+z-index:3000;
+padding:6px 10px;
 border-radius:999px;
+background:rgba(255,255,255,0.12);
 font-size:12px;
 }
-.onlineDot{
-width:8px;height:8px;border-radius:50%;
-background:#22c55e;
-display:inline-block;
-margin-right:6px;
+
+/* GAME */
+#gameBox{
+margin-top:20px;
+padding:10px;
+background:rgba(255,255,255,0.08);
+border-radius:10px;
+}
+
+#hangWord{
+font-size:22px;
+letter-spacing:6px;
+margin:10px 0;
+}
+
+#turnInfo{
+font-size:13px;
+opacity:0.8;
+margin-bottom:5px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- MENU -->
 <div id="menuBtn">☰ Menü</div>
 
 <div id="sideMenu">
-<div class="menuTitle">📌 Anı Kutusu</div>
+<div class="menuTitle">📌 Anı + Oyun</div>
 
-<input id="memoryInput" placeholder="Bugünkü anını yaz...">
+<input id="memoryInput" placeholder="Bugünkü anı...">
 <button id="addMemory">Ekle</button>
 
 <div id="memoryList"></div>
+
+<hr>
+
+<div id="gameBox">
+<h4>🪢 Adam Asmaca</h4>
+
+<div id="turnInfo">Sıra: ...</div>
+
+<div id="hangWord">_ _ _ _</div>
+<div id="hangLives">❤️❤️❤️❤️❤️</div>
+
+<input id="letter" maxlength="1" placeholder="Harf">
+<button onclick="guess()">Tahmin</button>
+
+<p id="gameInfo"></p>
 </div>
 
-<!-- SELECT -->
+</div>
+
 <div id="select">
 <h2>💜 Couple App</h2>
 <div class="cardRow">
@@ -221,7 +259,6 @@ margin-right:6px;
 </div>
 </div>
 
-<!-- APP -->
 <div id="app">
 
 <div id="statusBox">...</div>
@@ -251,8 +288,8 @@ import {
 getDatabase,
 ref,
 push,
-onValue,
 set,
+onValue,
 onDisconnect
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -267,19 +304,22 @@ const db = getDatabase(app);
 let room="test";
 let user="";
 
-const msgRef = ref(db,"rooms/"+room+"/chat");
+const chatRef = ref(db,"rooms/"+room+"/chat");
+const gameRef = ref(db,"rooms/"+room+"/game");
 const memRef = ref(db,"rooms/"+room+"/memories");
-const typingRef = (u)=>ref(db,"rooms/"+room+"/typing/"+u);
 const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
 
-/* MENU TOGGLE FIX */
+/* MENU */
 const menuBtn=document.getElementById("menuBtn");
 const sideMenu=document.getElementById("sideMenu");
 
-menuBtn.onclick=()=>sideMenu.classList.toggle("open");
+menuBtn.onclick=(e)=>{
+e.stopPropagation();
+sideMenu.classList.toggle("open");
+};
 
 document.addEventListener("click",(e)=>{
-if(!sideMenu.contains(e.target) && e.target!==menuBtn){
+if(!sideMenu.contains(e.target) && !menuBtn.contains(e.target)){
 sideMenu.classList.remove("open");
 }
 });
@@ -292,27 +332,39 @@ user=u;
 document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
 
+/* ONLINE */
 set(presenceRef(user),{online:true});
-
 onDisconnect(presenceRef(user)).set({online:false});
 
-let other=user==="Melek"?"Gökhan":"Melek";
+/* INIT GAME (once safe) */
+set(gameRef,{
+word:"istanbul",
+lives:5,
+turn:"Melek",
+display:Array(9).fill("_")
+});
 
+listenAll();
+}
+
+/* LISTEN ALL */
+function listenAll(){
 listenChat();
-listenTyping(other);
-listenPresence(other);
-listenMemories();
+listenTyping();
+listenGame();
+listenPresence();
+listenMemory();
 }
 
 /* CHAT */
 function listenChat(){
-onValue(msgRef,(snap)=>{
+onValue(chatRef,(snap)=>{
 let data=snap.val();
 let box=document.getElementById("messages");
 box.innerHTML="";
 if(!data) return;
 
-Object.entries(data).forEach(([k,m])=>{
+Object.values(data).forEach(m=>{
 let row=document.createElement("div");
 row.className="msgRow "+(m.u===user?"right":"left");
 
@@ -328,35 +380,34 @@ box.scrollTop=box.scrollHeight;
 });
 }
 
-/* SEND */
 document.getElementById("sendBtn").onclick=()=>{
 let t=document.getElementById("text").value.trim();
-if(!t||!user)return;
+if(!t)return;
 
-push(msgRef,{u:user,m:t});
+push(chatRef,{u:user,m:t});
 document.getElementById("text").value="";
 };
 
 /* TYPING */
 document.getElementById("text").addEventListener("input",()=>{
 
-if(!user) return;
+set(ref(db,"rooms/"+room+"/typing/"+user),{t:true});
 
-set(typingRef(user),{t:true});
-
-clearTimeout(window.typingTimer);
-window.typingTimer=setTimeout(()=>{
-set(typingRef(user),{t:false});
+clearTimeout(window.tp);
+window.tp=setTimeout(()=>{
+set(ref(db,"rooms/"+room+"/typing/"+user),{t:false});
 },800);
 });
 
-function listenTyping(other){
-onValue(typingRef(other),(s)=>{
-let d=s.val();
+function listenTyping(){
+onValue(ref(db,"rooms/"+room+"/typing"),(snap)=>{
+let d=snap.val()||{};
+let other=Object.keys(d).find(k=>k!==user && d[k].t);
+
 let box=document.getElementById("typing");
 let text=document.getElementById("typingText");
 
-if(!d||!d.t){
+if(!other){
 box.classList.add("hidden");
 return;
 }
@@ -367,39 +418,36 @@ text.innerText=other+" yazıyor...";
 }
 
 /* PRESENCE */
-function listenPresence(other){
-onValue(presenceRef(other),(s)=>{
-let d=s.val();
+function listenPresence(){
+onValue(ref(db,"rooms/"+room+"/presence"),(snap)=>{
+let d=snap.val()||{};
 let box=document.getElementById("statusBox");
 
-if(d?.online){
-box.innerHTML='<span class="onlineDot"></span>'+other+" çevrimiçi";
-}else{
-box.innerText=other+" offline";
-}
+let onlineUsers = Object.keys(d).filter(k=>d[k].online);
+
+box.innerText="Online: "+onlineUsers.join(", ");
 });
 }
 
-/* MEMORY SYSTEM */
+/* MEMORY */
 document.getElementById("addMemory").onclick=()=>{
-let text=document.getElementById("memoryInput").value.trim();
-if(!text||!user)return;
+let t=document.getElementById("memoryInput").value.trim();
+if(!t)return;
 
 push(memRef,{
 user,
-text,
+text:t,
 time:new Date().toLocaleString("tr-TR")
 });
 
 document.getElementById("memoryInput").value="";
 };
 
-function listenMemories(){
+function listenMemory(){
 onValue(memRef,(snap)=>{
 let data=snap.val();
 let box=document.getElementById("memoryList");
 box.innerHTML="";
-
 if(!data) return;
 
 Object.values(data).forEach(m=>{
@@ -415,6 +463,47 @@ box.appendChild(div);
 });
 });
 }
+
+/* GAME */
+function listenGame(){
+onValue(gameRef,(snap)=>{
+let g=snap.val();
+if(!g) return;
+
+window.game=g;
+
+document.getElementById("hangWord").innerText=g.display.join(" ");
+document.getElementById("hangLives").innerText="❤️".repeat(g.lives);
+document.getElementById("turnInfo").innerText="Sıra: "+g.turn;
+});
+}
+
+window.guess=function(){
+let l=document.getElementById("letter").value.toLowerCase();
+if(!l||!game)return;
+
+if(game.turn!==user){
+document.getElementById("gameInfo").innerText="Sıra sende değil!";
+return;
+}
+
+let found=false;
+
+for(let i=0;i<game.word.length;i++){
+if(game.word[i]===l){
+game.display[i]=l;
+found=true;
+}
+}
+
+if(!found) game.lives--;
+
+game.turn = game.turn==="Melek"?"Gökhan":"Melek";
+
+set(gameRef,game);
+
+document.getElementById("letter").value="";
+};
 
 </script>
 
