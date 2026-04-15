@@ -53,14 +53,13 @@ flex-direction:column;
 padding:12px;
 }
 
-/* MESSAGES */
 #messages{
 flex:1;
 overflow:auto;
 display:flex;
 flex-direction:column;
 gap:10px;
-padding:10px 4px 120px 4px; /* 🔥 input + typing için boşluk */
+padding:10px 4px 120px 4px;
 }
 
 /* MESSAGE */
@@ -97,10 +96,10 @@ background:rgba(255,255,255,0.10);
 border-bottom-left-radius:6px;
 }
 
-/* 🔥 TYPING FIXED POSITION */
+/* TYPING */
 #typingContainer{
 position:fixed;
-bottom:80px;   /* input üstü */
+bottom:80px;
 left:10px;
 right:10px;
 z-index:50;
@@ -121,19 +120,15 @@ width:fit-content;
 backdrop-filter:blur(10px);
 }
 
-/* dots */
-.dots{
-display:flex;
-gap:4px;
-}
-
 .dots span{
 width:6px;
 height:6px;
 background:white;
 border-radius:50%;
 opacity:0.3;
+display:inline-block;
 animation:bounce 1.2s infinite;
+margin-right:3px;
 }
 
 .dots span:nth-child(2){animation-delay:0.2s;}
@@ -223,7 +218,6 @@ margin-right:6px;
 <div id="messages"></div>
 </div>
 
-<!-- 🔥 typing artık input üstünde -->
 <div id="typingContainer" class="hidden">
   <div class="typingBubble">
     <span id="typingText">Yazıyor</span>
@@ -332,17 +326,21 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") send();
 });
 
-/* TYPING */
+/* 🔥 WORKING TYPING (FINAL FIX) */
 document.getElementById("text").addEventListener("input",()=>{
 
 if(!user) return;
 
-set(typingRef(user),{typing:true,t:Date.now()});
+set(typingRef(user),{
+t:Date.now()
+});
 
 clearTimeout(window.typingTimer);
 
 window.typingTimer=setTimeout(()=>{
-set(typingRef(user),{typing:false,t:Date.now()});
+set(typingRef(user),{
+t:0
+});
 },800);
 
 });
@@ -350,32 +348,28 @@ set(typingRef(user),{typing:false,t:Date.now()});
 /* LISTEN TYPING */
 function listenTyping(other){
 
+const box=document.getElementById("typingContainer");
+const text=document.getElementById("typingText");
+
 onValue(typingRef(other),(s)=>{
 let d=s.val();
-let box=document.getElementById("typingContainer");
-let text=document.getElementById("typingText");
 
-if(!d || !d.typing){
+if(!d || !d.t || d.t===0){
 box.classList.add("hidden");
 return;
 }
 
+let diff = Date.now() - d.t;
+
+if(diff < 2500){
 box.classList.remove("hidden");
-
 text.innerText = other + " yazıyor";
-
-let start = d.t || Date.now();
-
-clearInterval(window.typingInterval);
-
-window.typingInterval = setInterval(()=>{
-let diff = Date.now() - start;
-if(diff > 3000){
-text.innerText = other + " hâlâ yazıyor... :)";
+}else{
+box.classList.add("hidden");
 }
-},500);
 
 });
+
 }
 
 /* PRESENCE */
@@ -393,6 +387,7 @@ return;
 box.innerHTML = d.online
 ? '<span class="onlineDot"></span>'+other+" çevrimiçi"
 : "⏱ "+other+" offline";
+
 });
 
 }
