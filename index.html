@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Couple iOS V8.5</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont;
+background:#0b0f1a;
+color:white;
+height:100vh;
+overflow:hidden;
+}
+
+/* USER SELECT */
+#select{
+position:fixed;
+inset:0;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+gap:20px;
+background:#0b0f1a;
+z-index:1000;
+}
+
+.title{font-size:26px;font-weight:700;}
+
+.cardRow{display:flex;gap:20px;}
+
+.card{
+width:140px;
+padding:20px;
+border-radius:16px;
+background:rgba(255,255,255,0.08);
+border:1px solid rgba(255,255,255,0.1);
+cursor:pointer;
+text-align:center;
+transition:0.2s;
+}
+.card:hover{transform:scale(1.05);}
+
+/* APP */
+#app{display:none;height:100vh;position:relative;}
+
+#chat{
+height:100%;
+display:flex;
+flex-direction:column;
+padding:12px;
+}
+
+#messages{
+flex:1;
+overflow:auto;
+display:flex;
+flex-direction:column;
+gap:10px;
+padding-bottom:60px;
+}
+
+.msg{
+max-width:75%;
+padding:12px;
+border-radius:14px;
+background:rgba(255,255,255,0.08);
+}
+
+.me{
+align-self:flex-end;
+background:#3b82f6;
+}
+
+/* typing */
+#typing{
+font-size:12px;
+opacity:0.7;
+padding:6px 10px;
+height:18px;
+}
+
+/* input */
+#inputBar{
+position:fixed;
+bottom:15px;
+left:12px;
+right:12px;
+display:flex;
+gap:10px;
+padding:10px;
+border-radius:14px;
+background:rgba(255,255,255,0.08);
+}
+
+input{
+flex:1;
+padding:12px;
+border:none;
+border-radius:12px;
+outline:none;
+background:rgba(255,255,255,0.1);
+color:white;
+}
+
+#sendBtn{
+padding:12px 14px;
+border:none;
+border-radius:12px;
+background:#3b82f6;
+color:white;
+cursor:pointer;
+}
+
+/* FAB */
+#fab{
+position:fixed;
+top:18px;
+right:18px;
+width:52px;
+height:52px;
+border-radius:14px;
+background:#3b82f6;
+display:flex;
+align-items:center;
+justify-content:center;
+cursor:pointer;
+}
+
+#backdrop{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.5);
+display:none;
+}
+
+#drawer{
+position:fixed;
+top:0;
+right:-360px;
+width:320px;
+height:100%;
+background:rgba(20,25,40,0.98);
+transition:0.35s;
+padding:16px;
+}
+
+#drawer.open{right:0;}
+
+.modBtn{
+width:100%;
+padding:12px;
+margin:8px 0;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div id="select">
+<div class="title">💜 Couple App</div>
+<div class="cardRow">
+<div class="card" onclick="selectUser('Melek')">👼 Melek</div>
+<div class="card" onclick="selectUser('Gökhan')">😎 Gökhan</div>
+</div>
+</div>
+
+<div id="app">
+
+<div id="chat">
+<div id="messages"></div>
+<div id="typing"></div>
+</div>
+
+<div id="inputBar">
+<input id="text" placeholder="iMessage...">
+<button id="sendBtn">➤</button>
+</div>
+
+<div id="fab" onclick="toggleDrawer()">⚙️</div>
+<div id="backdrop" onclick="toggleDrawer()"></div>
+
+<div id="drawer">
+<h3>🎮 Modlar</h3>
+<button class="modBtn" onclick="mode('story')">📖 Hikaye</button>
+<button class="modBtn" onclick="mode('puzzle')">🧩 Bulmaca</button>
+<button class="modBtn" onclick="mode('chaos')">🎡 Kaos</button>
+</div>
+
+</div>
+
+<script type="module">
+
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+getDatabase,
+ref,
+push,
+onValue,
+set
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const app = initializeApp({
+apiKey:"AIzaSyBAvlyYU3xJcCJg3sxpv84QcqHhHsc",
+authDomain:"contact-23b7b.firebaseapp.com",
+databaseURL:"https://contact-23b7b-default-rtdb.firebaseio.com"
+});
+
+const db = getDatabase(app);
+
+let room="test";
+let user="";
+
+const msgRef = ref(db,"rooms/"+room+"/chat");
+const typingRef = ref(db,"rooms/"+room+"/typing");
+
+/* USER */
+window.selectUser=function(u){
+user=u;
+document.getElementById("select").style.display="none";
+document.getElementById("app").style.display="block";
+}
+
+/* CHAT */
+onValue(msgRef,(s)=>{
+let data=s.val();
+let box=document.getElementById("messages");
+box.innerHTML="";
+if(!data)return;
+
+Object.values(data).forEach(m=>{
+let div=document.createElement("div");
+div.className="msg "+(m.u===user?"me":"");
+div.innerText=m.m;
+box.appendChild(div);
+});
+
+box.scrollTop = box.scrollHeight;
+});
+
+/* SEND */
+function sendMessage(){
+let t=document.getElementById("text").value.trim();
+if(!t || !user) return;
+
+push(msgRef,{u:user,m:t});
+document.getElementById("text").value="";
+stopTyping();
+}
+
+document.getElementById("sendBtn").onclick=sendMessage;
+
+document.getElementById("text").addEventListener("keydown",(e)=>{
+if(e.key==="Enter") sendMessage();
+});
+
+/* TYPING */
+let typingTimeout;
+
+document.getElementById("text").addEventListener("input",()=>{
+if(!user) return;
+
+set(typingRef,{u:user,t:true});
+
+clearTimeout(typingTimeout);
+typingTimeout=setTimeout(()=>{
+stopTyping();
+},800);
+});
+
+function stopTyping(){
+set(typingRef,{u:user,t:false});
+}
+
+/* SHOW TYPING */
+onValue(typingRef,(s)=>{
+let data=s.val();
+let box=document.getElementById("typing");
+
+if(!data || !data.t || data.u===user){
+box.innerText="";
+return;
+}
+
+box.innerText="💬 karşı taraf yazıyor...";
+});
+
+/* DRAWER */
+window.toggleDrawer=function(){
+let d=document.getElementById("drawer");
+let b=document.getElementById("backdrop");
+
+let open=d.classList.contains("open");
+
+if(open){
+d.classList.remove("open");
+b.style.display="none";
+}else{
+d.classList.add("open");
+b.style.display="block";
+}
+}
+
+/* MODE */
+window.mode=function(m){
+alert("📱 "+m+" aktif");
+toggleDrawer();
+}
+
+</script>
+
+</body>
+</html>
