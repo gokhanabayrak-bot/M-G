@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Couple iOS V8.5</title>
+<title>Couple App</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -172,6 +172,16 @@ font-size:16px;
 cursor:pointer;
 }
 
+/* STATUS */
+#status{
+position:fixed;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+font-size:12px;
+opacity:0.7;
+}
+
 </style>
 </head>
 
@@ -188,6 +198,8 @@ cursor:pointer;
 
 <!-- APP -->
 <div id="app">
+
+<div id="status"></div>
 
 <div id="chat">
 <div id="messages"></div>
@@ -217,7 +229,9 @@ import {
 getDatabase,
 ref,
 push,
-onValue
+onValue,
+set,
+onDisconnect
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const app = initializeApp({
@@ -234,11 +248,32 @@ let user="";
 const msgRef = ref(db,"rooms/"+room+"/chat");
 const typingRef = ref(db,"rooms/"+room+"/typing");
 
-/* USER */
+/* PRESENCE */
+const presenceRef = (u)=>ref(db,"rooms/"+room+"/presence/"+u);
+
+/* SELECT USER */
 window.selectUser=function(u){
+
 user=u;
+
 document.getElementById("select").style.display="none";
 document.getElementById("app").style.display="block";
+
+/* ONLINE */
+set(presenceRef(user),{
+online:true,
+lastSeen:Date.now()
+});
+
+/* OFFLINE */
+onDisconnect(presenceRef(user)).set({
+online:false,
+lastSeen:Date.now()
+});
+
+/* listen other user */
+let other = user==="Melek" ? "Gökhan" : "Melek";
+listenPresence(other);
 }
 
 /* CHAT */
@@ -267,9 +302,8 @@ row.appendChild(bubble);
 box.appendChild(row);
 });
 
-/* AUTO SCROLL */
 setTimeout(()=>{
-box.scrollTop = box.scrollHeight;
+box.scrollTop=box.scrollHeight;
 },50);
 
 });
@@ -289,42 +323,64 @@ document.getElementById("text").addEventListener("keydown",(e)=>{
 if(e.key==="Enter") sendMessage();
 });
 
-/* TYPING SYSTEM */
-let typingStartTime = null;
-let typingInterval = null;
+/* TYPING */
+let typingStartTime=null;
+let typingInterval=null;
 
 onValue(typingRef,(s)=>{
-let data=s.val();
+let d=s.val();
 let box=document.getElementById("typing");
 let text=document.getElementById("typingText");
 
-if(!data || data.u===user || !data.t){
+if(!d || d.u===user || !d.t){
 box.classList.add("hidden");
-typingStartTime = null;
+typingStartTime=null;
 clearInterval(typingInterval);
 return;
 }
 
 box.classList.remove("hidden");
+text.innerText=d.u+" yazıyor";
 
-/* isim */
-text.innerText = data.u + " yazıyor";
-
-/* timer */
 if(!typingStartTime){
-typingStartTime = Date.now();
+typingStartTime=Date.now();
 }
 
 clearInterval(typingInterval);
-typingInterval = setInterval(()=>{
-let diff = Date.now() - typingStartTime;
-
-if(diff > 3000){
-text.innerText = data.u + " hâlâ yazıyor... :)";
+typingInterval=setInterval(()=>{
+let diff=Date.now()-typingStartTime;
+if(diff>3000){
+text.innerText=d.u+" hâlâ yazıyor... :)";
 }
 },500);
-
 });
+
+/* PRESENCE UI */
+function formatTime(ts){
+let diff=Date.now()-ts;
+if(diff<60000) return "şimdi aktif";
+if(diff<3600000) return Math.floor(diff/60000)+" dk önce";
+if(diff<86400000) return Math.floor(diff/3600000)+" saat önce";
+return Math.floor(diff/86400000)+" gün önce";
+}
+
+function listenPresence(other){
+onValue(presenceRef(other),(s)=>{
+let d=s.val();
+let status=document.getElementById("status");
+
+if(!d){
+status.innerText=other+" durumu bilinmiyor";
+return;
+}
+
+if(d.online){
+status.innerText=other+" 🟢 çevrimiçi";
+}else{
+status.innerText=other+" ⏱ "+formatTime(d.lastSeen);
+}
+});
+}
 
 </script>
 
